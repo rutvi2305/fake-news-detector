@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fake News Detector</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    color: #e8e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  h1 span.real { color: #00e5a0; }
+  h1 span.fake { color: #ff3d6e; }
+
+  .subtitle {
+    color: #6b6b88;
+    font-size: 0.9rem;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .card {
+    background: #16161f;
+    border: 1px solid #2a2a3a;
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 700px;
+    margin-bottom: 24px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #7c6aff;
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: #0f0f1a;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    color: #e8e8f0;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: #7c6aff; }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  button {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: #7c6aff;
+    color: #fff;
+    flex: 1;
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: transparent;
+    color: #6b6b88;
+    border: 1px solid #2a2a3a;
+  }
+
+  .btn-secondary:hover { border-color: #7c6aff; color: #7c6aff; }
+
+  /* Sample chips */
+  .samples { margin-bottom: 24px; width: 100%; max-width: 700px; }
+  .samples p { font-size: 0.8rem; color: #6b6b88; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .chip {
+    font-size: 11px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.2s;
+    background: transparent;
+  }
+
+  .chip-real { border-color: rgba(0,229,160,0.4); color: #00e5a0; }
+  .chip-real:hover { background: rgba(0,229,160,0.1); }
+  .chip-fake { border-color: rgba(255,61,110,0.4); color: #ff3d6e; }
+  .chip-fake:hover { background: rgba(255,61,110,0.1); }
+
+  /* Result */
+  .result { display: none; width: 100%; max-width: 700px; }
+
+  .result-card {
+    border-radius: 12px;
+    padding: 28px;
+    border: 1px solid transparent;
+    margin-bottom: 16px;
+  }
+
+  .result-real { background: rgba(0,229,160,0.05); border-color: #00e5a0; }
+  .result-fake { background: rgba(255,61,110,0.05); border-color: #ff3d6e; }
+
+  .verdict {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+  }
+
+  .verdict-real { color: #00e5a0; }
+  .verdict-fake { color: #ff3d6e; }
+
+  .confidence-tag {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+
+  .tag-real { background: rgba(0,229,160,0.15); color: #00e5a0; }
+  .tag-fake { background: rgba(255,61,110,0.15); color: #ff3d6e; }
+
+  .prob-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .prob-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    width: 45px;
+  }
+
+  .prob-track {
+    flex: 1;
+    height: 6px;
+    background: #2a2a3a;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .prob-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  .fill-real { background: #00e5a0; }
+  .fill-fake { background: #ff3d6e; }
+  .prob-val { font-size: 12px; width: 45px; text-align: right; }
+
+  /* Loading */
+  .loading { display: none; text-align: center; padding: 30px; color: #6b6b88; }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 2px solid #2a2a3a;
+    border-top-color: #7c6aff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Stats bar */
+  .stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: #0f0f1a;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  .stat-val { font-size: 1.4rem; font-weight: 700; }
+  .stat-name { font-size: 10px; color: #6b6b88; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1><span class="real">REAL</span> vs <span class="fake">FAKE</span> News Detector</h1>
+<p class="subtitle">Powered by a real ML model trained on 44,898 articles · 98.31% accuracy</p>
+
+<!-- Sample chips -->
+<div class="samples">
+  <p>Try a sample</p>
+  <div class="chips">
+    <button class="chip chip-real" onclick="loadSample('real1')">Real: Research Study</button>
+    <button class="chip chip-real" onclick="loadSample('real2')">Real: Finance News</button>
+    <button class="chip chip-fake" onclick="loadSample('fake1')">Fake: Conspiracy</button>
+    <button class="chip chip-fake" onclick="loadSample('fake2')">Fake: Sensational</button>
+  </div>
+</div>
+
+<!-- Input card -->
+<div class="card">
+  <label>Paste article text below</label>
+  <textarea id="articleText" placeholder="Enter a news article or headline to analyze..."></textarea>
+  <div class="btn-row">
+    <button class="btn-primary" id="analyzeBtn" onclick="analyze()">Analyze Article</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  Analyzing with ML model...
+</div>
+
+<!-- Result -->
+<div class="result" id="result">
+  <div class="result-card" id="resultCard">
+    <div class="verdict" id="verdict"></div>
+    <div class="confidence-tag" id="confidenceTag"></div>
+    <div class="prob-row">
+      <div class="prob-label" style="color:#00e5a0">Real</div>
+      <div class="prob-track"><div class="prob-fill fill-real" id="realBar" style="width:0%"></div></div>
+      <div class="prob-val" id="realVal"></div>
+    </div>
+    <div class="prob-row">
+      <div class="prob-label" style="color:#ff3d6e">Fake</div>
+      <div class="prob-track"><div class="prob-fill fill-fake" id="fakeBar" style="width:0%"></div></div>
+      <div class="prob-val" id="fakeVal"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+</div>
+
+<script>
+const samples = {
+  real1: "Researchers at Stanford University published findings in the New England Journal of Medicine showing a new mRNA vaccine reduced hospitalizations by 87% in a double-blind trial of 12,000 participants. The study, conducted over 18 months, found statistically significant results across all age groups. Lead researcher Dr. Sarah Chen noted that while results are promising, further peer review and long-term follow-up studies are required before any regulatory submission.",
+  real2: "The Federal Reserve raised interest rates by 0.25 percentage points on Wednesday, citing persistent inflation concerns in core consumer goods. The decision was approved unanimously by the Federal Open Market Committee. Markets responded with modest declines as economists debated the long-term impact on mortgage rates and small business lending.",
+  fake1: "BOMBSHELL!!! SECRET government LEAK proves COVID vaccines contain MICROCHIPS tied to Bill Gates 5G network!!! The mainstream media WON'T tell you this!!! Sources inside the WHO confirm what we've known all along. SHARE before they DELETE this!!! Anonymous doctors are risking their LIVES to expose the TRUTH. Wake up sheeple before it's too late!!!",
+  fake2: "SHOCKING: Top scientist CURES cancer with cheap household item but BIG PHARMA is SUPPRESSING it!!! An anonymous insider reveals the BOMBSHELL truth they've been hiding for decades. The cure THEY don't want you to know about. Doctors HATE this one simple trick! Share this before the globalist elite removes it from the internet forever!!!"
+};
+
+function loadSample(key) {
+  document.getElementById('articleText').value = samples[key];
+  document.getElementById('result').style.display = 'none';
+}
+
+function clearAll() {
+  document.getElementById('articleText').value = '';
+  document.getElementById('result').style.display = 'none';
+}
+
+async function analyze() {
+  const text = document.getElementById('articleText').value.trim();
+  if (!text || text.length < 20) {
+    alert('Please enter at least 20 characters.');
+    return;
+  }
+
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  try {
+    const response = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      alert('Error: ' + data.error);
+      return;
+    }
+
+    const isFake = data.label === 'FAKE';
+
+    // Set verdict
+    document.getElementById('verdict').textContent = isFake ? 'FAKE NEWS' : 'REAL NEWS';
+    document.getElementById('verdict').className = 'verdict ' + (isFake ? 'verdict-fake' : 'verdict-real');
+
+    // Set card color
+    document.getElementById('resultCard').className = 'result-card ' + (isFake ? 'result-fake' : 'result-real');
+
+    // Confidence tag
+    const level = data.confidence > 85 ? 'HIGH' : data.confidence > 65 ? 'MEDIUM' : 'LOW';
+    document.getElementById('confidenceTag').textContent = level + ' CONFIDENCE · ' + data.confidence + '%';
+    document.getElementById('confidenceTag').className = 'confidence-tag ' + (isFake ? 'tag-fake' : 'tag-real');
+
+    // Bars
+    setTimeout(() => {
+      document.getElementById('realBar').style.width = data.real_prob + '%';
+      document.getElementById('fakeBar').style.width = data.fake_prob + '%';
+    }, 100);
+
+    document.getElementById('realVal').textContent = data.real_prob + '%';
+    document.getElementById('fakeVal').textContent = data.fake_prob + '%';
+
+    // Stats
+    const words = text.trim().split(/\s+/).length;
+    const caps = (text.match(/\b[A-Z]{2,}\b/g) || []).length;
+    const excl = (text.match(/!/g) || []).length;
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-val">${words}</div><div class="stat-name">Words</div></div>
+      <div class="stat"><div class="stat-val">${caps}</div><div class="stat-name">CAPS Words</div></div>
+      <div class="stat"><div class="stat-val">${excl}</div><div class="stat-name">Exclamations</div></div>
+      <div class="stat"><div class="stat-val">${data.confidence}%</div><div class="stat-name">Confidence</div></div>
+    `;
+
+    document.getElementById('result').style.display = 'block';
+
+  } catch (err) {
+    alert('Something went wrong. Make sure Flask is running!');
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+</script>
+</body>
+</html>
