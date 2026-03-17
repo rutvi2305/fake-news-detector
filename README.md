@@ -8,10 +8,10 @@ A machine learning system that classifies news articles as **Real** or **Fake** 
 
 | Model | Accuracy | F1-Score | AUC-ROC |
 |---|---|---|---|
-| Logistic Regression | ~94% | ~94% | ~94% |
-| Naive Bayes | ~90% | ~90% | ~90% |
-| Random Forest | ~92% | ~92% | ~92% |
-| **Ensemble (Voting)** | **~95%** | **~95%** | **~95%** |
+| Logistic Regression | 97.27% | 97.33% | 99.43% |
+| Naive Bayes | 94.06% | 94.06% | 98.25% |
+| Random Forest | 98.31% | 98.34% | 99.87% |
+| **Ensemble (Voting)** | **95.89%** | **95.88%** | **99.56%** |
 
 > Trained on 44,898 real-world articles from the Kaggle Fake News Dataset
 

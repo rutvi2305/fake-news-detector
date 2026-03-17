@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 """
 AI-Powered Fake News Detection System
 ======================================
@@ -606,19 +610,46 @@ def train_test_split_manual(texts, labels, test_size=0.2, seed=42):
 def main():
     print("=" * 60)
     print("   AI-Powered Fake News Detection System")
-    print("   Built with NLP & ML from scratch")
+    print("   Training on REAL Kaggle Dataset")
     print("=" * 60)
 
-    print("\n[Dataset] Generating synthetic news dataset...")
-    texts, labels = generate_demo_dataset(n_real=500, n_fake=500)
-    X_train, y_train, X_test, y_test = train_test_split_manual(texts, labels, test_size=0.2)
-    print(f"  Train: {len(X_train)} articles | Test: {len(X_test)} articles")
-    print(f"  Class balance - Real: {y_train.count(0)} | Fake: {y_train.count(1)}")
+    # ── Load real dataset ──────────────────────────────────────
+    print("\n[Dataset] Loading Fake and Real news CSV files...")
+    import pandas as pd
 
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    fake_df = pd.read_csv(os.path.join(base_dir, 'data', 'Fake.csv'))
+    real_df = pd.read_csv(os.path.join(base_dir, 'data', 'True.csv'))
+
+    fake_df['label'] = 1
+    real_df['label'] = 0
+
+    df = pd.concat([fake_df, real_df], ignore_index=True)
+    df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    df['content'] = df['title'].fillna('') + ' ' + df['text'].fillna('')
+
+    texts  = df['content'].tolist()
+    labels = df['label'].tolist()
+
+    print(f"  Total articles : {len(texts)}")
+    print(f"  Real articles  : {labels.count(0)}")
+    print(f"  Fake articles  : {labels.count(1)}")
+
+    # ── Split dataset ──────────────────────────────────────────
+    X_train, y_train, X_test, y_test = train_test_split_manual(
+        texts, labels, test_size=0.2
+    )
+    print(f"  Train size : {len(X_train)}")
+    print(f"  Test size  : {len(X_test)}")
+
+    # ── Train ──────────────────────────────────────────────────
     detector = FakeNewsDetector()
     detector.fit(X_train, y_train)
 
-    print("\n\n--- EVALUATION ON TEST SET ---")
+    # ── Evaluate ───────────────────────────────────────────────
+    print("\n\n--- EVALUATION ON REAL TEST DATA ---")
     results = detector.evaluate(X_test, y_test)
 
     print("\n\n--- COMPARISON TABLE ---")
@@ -627,23 +658,31 @@ def main():
     for name, r in results.items():
         print(f"{name:<25} {r['accuracy']:>10.4f} {r['f1']:>10.4f} {r['auc']:>10.4f}")
 
+    # ── Live predictions ───────────────────────────────────────
     print("\n\n--- LIVE PREDICTIONS ---")
-
     test_articles = [
         {
-            "text": "Researchers at Stanford University published findings in the New England Journal of Medicine showing a new mRNA vaccine reduced hospitalizations by 87% in a trial of 12,000 participants. Dr. Sarah Chen noted results must still pass peer review.",
+            "text": "Scientists at Oxford University confirmed a breakthrough "
+                    "cancer treatment showing 80% success rate in clinical trials. "
+                    "The peer-reviewed study was published in Nature Medicine.",
             "expected": "REAL"
         },
         {
-            "text": "BOMBSHELL!!! SECRET government LEAK proves COVID vaccines contain MICROCHIPS!! Deep state whistleblowers risk EVERYTHING to expose this TRUTH the mainstream media DOESN'T want you to see!!! SHARE before they DELETE!!",
+            "text": "BREAKING!!! Government secretly putting mind control chemicals "
+                    "in tap water!!! SHARE before they DELETE this!!! "
+                    "Anonymous insider EXPOSES the TRUTH!!!",
             "expected": "FAKE"
         },
         {
-            "text": "The Federal Reserve raised interest rates by 0.25 percentage points on Wednesday, citing persistent inflation concerns. Markets responded with modest declines as economists debated the long-term impact on mortgage rates.",
+            "text": "The Federal Reserve held interest rates steady on Wednesday, "
+                    "citing mixed economic signals. Fed Chair noted inflation "
+                    "has eased but remains above the 2% target.",
             "expected": "REAL"
         },
         {
-            "text": "SHOCKING: Top scientist CURES cancer with cheap household item but BIG PHARMA is SUPPRESSING the cure!!! Anonymous doctors reveal the CONSPIRACY to keep you sick and paying. Wake up sheeple!!!",
+            "text": "SHOCKING: BIG PHARMA suppressing natural cure for diabetes! "
+                    "Doctors HATE this one trick! The deep state doesn't want "
+                    "you to know. WAKE UP SHEEPLE!!!",
             "expected": "FAKE"
         },
     ]
@@ -651,12 +690,14 @@ def main():
     print(f"\n{'─'*65}")
     for i, article in enumerate(test_articles, 1):
         result = detector.predict_single(article['text'])
-        match = "✓" if result['label'] == article['expected'] else "✗"
-        print(f"\n[Article {i}] Preview: {article['text'][:80]}...")
+        match  = "✓" if result['label'] == article['expected'] else "✗"
+        print(f"\n[Article {i}] {article['text'][:80]}...")
         print(f"  Prediction : {result['label']} {match}  (Expected: {article['expected']})")
         print(f"  Confidence : {result['confidence']*100:.1f}%")
-        print(f"  Real Prob  : {result['real_prob']*100:.1f}%  |  Fake Prob: {result['fake_prob']*100:.1f}%")
+        print(f"  Real Prob  : {result['real_prob']*100:.1f}%  "
+              f"|  Fake Prob: {result['fake_prob']*100:.1f}%")
 
+    # ── Save model ─────────────────────────────────────────────
     detector.save('fake_news_model.pkl')
     print("\n✓ Done! Model saved.")
 
